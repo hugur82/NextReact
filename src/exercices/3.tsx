@@ -1,4 +1,4 @@
-import { FormEvent, useRef, useState } from "react";
+import { FormEvent, RefObject, useRef, useState } from "react";
 import { Board } from "../lib/tictactoe/Board";
 import { GameInfo } from "../lib/tictactoe/GameInfo";
 import {
@@ -17,8 +17,15 @@ type UserNameFormProps = {
 // 🦁 Créer un hooks `useUserNamesForm` et déplacer toute la logique de notre
 // composant `UserNameForm` dans ce hooks.
 
-const UserNameForm = ({ onUserNamesSubmitted }: UserNameFormProps) => {
-  // 🦁 Déplace la logique de ce composant dans le hooks `useUserNamesForm`
+type useUserNammeFormOutput = {
+  userXRef: RefObject<HTMLInputElement>;
+  userORef: RefObject<HTMLInputElement>;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+};
+
+const useUserNamesForm = ({
+  onUserNamesSubmitted,
+}: UserNameFormProps): useUserNammeFormOutput => {
   const userXRef = useRef<HTMLInputElement>(null);
   const userORef = useRef<HTMLInputElement>(null);
 
@@ -32,7 +39,16 @@ const UserNameForm = ({ onUserNamesSubmitted }: UserNameFormProps) => {
 
     onUserNamesSubmitted({ X: userX, O: userO });
   };
+  return {
+    userXRef,
+    userORef,
+    onSubmit,
+  };
+};
 
+const UserNameForm = (props: UserNameFormProps) => {
+  // 🦁 Déplace la logique de ce composant dans le hooks `useUserNamesForm`
+  const { userXRef, userORef, onSubmit } = useUserNamesForm(props);
   return (
     <form onSubmit={onSubmit} className="vertical-stack">
       <h3>Put players usernames</h3>
@@ -45,14 +61,37 @@ const UserNameForm = ({ onUserNamesSubmitted }: UserNameFormProps) => {
   );
 };
 
-const Game = () => {
-  const [squares] = useState<SquareValue[]>(() => getDefaultSquares());
+type useGameOutput = {
+  squares: SquareValue[];
+  userNames: UserNames;
+  status: string;
+  setUserNames: (userNames: UserNames) => void;
+};
+
+const useGame = (): useGameOutput => {
+  const [squares] = useState(getDefaultSquares());
   const [userNames, setUserNames] = useState<UserNames>({
-    X: "Player X",
-    O: "Player O",
+    X: null,
+    O: null,
   });
 
   const nextValue = calculateNextValue(squares);
+
+  const status = calculateStatus(
+    squares,
+    `${userNames[nextValue]}'s turn (${nextValue})`
+  );
+
+  return {
+    squares,
+    userNames,
+    setUserNames,
+    status,
+  };
+};
+
+const Game = () => {
+  const { squares, userNames, setUserNames, status } = useGame();
 
   const xUserName = userNames.X;
   const oUserName = userNames.O;
@@ -66,11 +105,6 @@ const Game = () => {
       />
     );
   }
-
-  const status = calculateStatus(
-    squares,
-    `${userNames[nextValue]}'s turn (${nextValue})`
-  );
 
   return (
     <div className="game">
